@@ -151,6 +151,22 @@ function VibeCard({
 }) {
   const { savePost, unsavePost, savedPosts, hydrate: hydrateStore } = useSavedStore();
 
+  const avatarVal: any = vibe?.avatar;
+  const userVal: any = vibe?.user;
+  const handleVal: any = vibe?.handle;
+
+  const displayAvatar = (avatarVal && typeof avatarVal === 'object') 
+    ? (avatarVal.avatar || '') 
+    : (avatarVal || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80');
+
+  const displayUser = (userVal && typeof userVal === 'object')
+    ? (userVal.name || userVal.username || 'User')
+    : (userVal || 'User');
+
+  const displayHandle = (handleVal && typeof handleVal === 'object')
+    ? (handleVal.username || '@user')
+    : (handleVal || ((userVal && typeof userVal === 'object') ? `@${userVal.username}` : '@user'));
+
   useEffect(() => {
     hydrateStore();
   }, [hydrateStore]);
@@ -1080,8 +1096,8 @@ function VibeCard({
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <div className="flex items-center gap-3">
               <img 
-                src={vibe.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80'} 
-                alt={vibe.user} 
+                src={displayAvatar} 
+                alt={displayUser} 
                 onClick={handleProfileClick}
                 className="w-10 h-10 rounded-full border border-[#B026FF]/60 object-cover shadow-inner cursor-pointer hover:border-[#00F0FF] transition-colors" 
               />
@@ -1091,17 +1107,17 @@ function VibeCard({
                     onClick={handleProfileClick}
                     className="font-bold text-sm text-white hover:text-[#B026FF] cursor-pointer transition-colors"
                   >
-                    {vibe.user}
+                    {displayUser}
                   </span>
                   <span className="text-[9px] text-[#B026FF] font-extrabold border border-[#B026FF]/40 px-2 py-0.5 rounded-full uppercase tracking-wider bg-[#B026FF]/10 select-none">
-                    {vibe.creatorTier}
+                    {vibe?.creatorTier}
                   </span>
                 </div>
                 <span 
                   onClick={handleProfileClick}
                   className="text-xs text-white/40 block leading-tight hover:text-white cursor-pointer transition-colors"
                 >
-                  {vibe.handle}
+                  {displayHandle}
                 </span>
               </div>
             </div>

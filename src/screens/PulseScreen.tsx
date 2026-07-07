@@ -40,6 +40,33 @@ function fmt(n: number) {
   return String(n);
 }
 
+export function safeUserString(user: any): string {
+  if (!user) return 'User';
+  if (typeof user === 'object') {
+    return user.name || user.username || user.user || 'User';
+  }
+  return String(user);
+}
+
+export function safeHandleString(handle: any, userObj?: any): string {
+  if (handle && typeof handle === 'string') return handle;
+  if (userObj && typeof userObj === 'object') {
+    const candidate = userObj.username || userObj.handle || userObj.user;
+    if (candidate && typeof candidate === 'string') {
+      return candidate.startsWith('@') ? candidate : `@${candidate}`;
+    }
+  }
+  return '@user';
+}
+
+export function safeAvatarString(avatar: any, userObj?: any): string {
+  if (avatar && typeof avatar === 'string') return avatar;
+  if (userObj && typeof userObj === 'object' && userObj.avatar && typeof userObj.avatar === 'string') {
+    return userObj.avatar;
+  }
+  return 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&q=80';
+}
+
 // Looks up a post by id, checking inside repost wrappers too — comments
 // and the share sheet both need the *real* post (likes/comments/caption),
 // not the thin repost record that just points at it.
@@ -188,14 +215,14 @@ function TextPost({ post, onLike, onComment, onShare, onSave, onReact, navigate,
       )}
       {/* User row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
-          <AvatarWithRing src={post.avatar} size="sm" isStory={false} showOnlineDot username={post.handle} />
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${safeHandleString(post.handle, post.user).replace('@', '')}`)}>
+          <AvatarWithRing src={safeAvatarString(post.avatar, post.user)} size="sm" isStory={false} showOnlineDot username={safeHandleString(post.handle, post.user)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className={`font-bold text-sm ${hasCustomColor ? 'text-black/80' : 'text-white'}`}>{post.user}</span>
-              <BadgeRow stats={generateMockStatsForBadge(post.handle)} isSmall />
+              <span className={`font-bold text-sm ${hasCustomColor ? 'text-black/80' : 'text-white'}`}>{safeUserString(post.user)}</span>
+              <BadgeRow stats={generateMockStatsForBadge(safeHandleString(post.handle, post.user))} isSmall />
             </div>
-            <span className={`text-xs ${hasCustomColor ? 'text-black/50' : 'text-white/40'}`}>{post.handle} · {post.time}</span>
+            <span className={`text-xs ${hasCustomColor ? 'text-black/50' : 'text-white/40'}`}>{safeHandleString(post.handle, post.user)} · {post.time}</span>
           </div>
         </div>
         <MoreHorizontal className={`w-5 h-5 ${hasCustomColor ? 'text-black/30' : 'text-white/30'}`} />
@@ -370,14 +397,14 @@ function PollPost({ post, onLike, onComment, onShare, onSave, navigate, currentU
     <div className="mx-4 mb-6 rounded-3xl bg-[#12001a] border border-white/8 overflow-hidden shadow-xl">
       {/* User row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
-          <AvatarWithRing src={post.avatar} size="sm" isStory={false} showOnlineDot username={post.handle} />
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${safeHandleString(post.handle, post.user).replace('@', '')}`)}>
+          <AvatarWithRing src={safeAvatarString(post.avatar, post.user)} size="sm" isStory={false} showOnlineDot username={safeHandleString(post.handle, post.user)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-white font-bold text-sm">{post.user}</span>
-              <BadgeRow stats={generateMockStatsForBadge(post.handle)} isSmall />
+              <span className="text-white font-bold text-sm">{safeUserString(post.user)}</span>
+              <BadgeRow stats={generateMockStatsForBadge(safeHandleString(post.handle, post.user))} isSmall />
             </div>
-            <span className="text-white/40 text-xs">{post.handle} · {post.time}</span>
+            <span className="text-white/40 text-xs">{safeHandleString(post.handle, post.user)} · {post.time}</span>
           </div>
         </div>
         <MoreHorizontal className="w-5 h-5 text-white/30" />
@@ -623,14 +650,14 @@ function MultiImagePost({ post, onLike, onComment, onShare, onSave, onReact, nav
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
-          <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${safeHandleString(post.handle, post.user).replace('@', '')}`)}>
+          <AvatarWithRing src={safeAvatarString(post.avatar, post.user)} size="sm" isStory showOnlineDot username={safeHandleString(post.handle, post.user)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold">{post.user}</span>
-              <BadgeRow stats={generateMockStatsForBadge(post.handle)} isSmall />
+              <span className="text-white text-sm font-semibold">{safeUserString(post.user)}</span>
+              <BadgeRow stats={generateMockStatsForBadge(safeHandleString(post.handle, post.user))} isSmall />
             </div>
-            <span className="text-xs text-gray-500">{post.handle} · {post.time}</span>
+            <span className="text-xs text-gray-500">{safeHandleString(post.handle, post.user)} · {post.time}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -805,7 +832,7 @@ function PostActions({ post, onLike, onComment, onShare, onSave, onReact, naviga
       )}
       {post.caption && typeof post.caption === 'string' && (
         <p className="text-sm leading-relaxed">
-          <span className="font-semibold text-white mr-2">{post.user}</span>
+          <span className="font-semibold text-white mr-2">{safeUserString(post.user)}</span>
           {post.caption.split(' ').map((w: string, i: number) =>
             w.startsWith('#') ? (
               <span
@@ -907,14 +934,14 @@ function VideoThumbPost({ post, onLike, onComment, onShare, onSave, onReact, nav
   return (
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
-          <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${safeHandleString(post.handle, post.user).replace('@', '')}`)}>
+          <AvatarWithRing src={safeAvatarString(post.avatar, post.user)} size="sm" isStory showOnlineDot username={safeHandleString(post.handle, post.user)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-white text-sm font-semibold">{post.user}</span>
-              <BadgeRow stats={generateMockStatsForBadge(post.handle)} isSmall />
+              <span className="text-white text-sm font-semibold">{safeUserString(post.user)}</span>
+              <BadgeRow stats={generateMockStatsForBadge(safeHandleString(post.handle, post.user))} isSmall />
             </div>
-            <span className="text-xs text-gray-500">{post.handle} · {post.time}</span>
+            <span className="text-xs text-gray-500">{safeHandleString(post.handle, post.user)} · {post.time}</span>
           </div>
         </div>
         {post.temperature && (
@@ -1096,14 +1123,14 @@ function ImagePost({ post, onLike, onComment, onShare, onSave, onReact, navigate
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
-          <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/profile/${safeHandleString(post.handle, post.user).replace('@', '')}`)}>
+          <AvatarWithRing src={safeAvatarString(post.avatar, post.user)} size="sm" isStory showOnlineDot username={safeHandleString(post.handle, post.user)} />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold group-hover:underline text-white">{post.user}</span>
-              <BadgeRow stats={generateMockStatsForBadge(post.handle)} isSmall />
+              <span className="text-sm font-semibold group-hover:underline text-white">{safeUserString(post.user)}</span>
+              <BadgeRow stats={generateMockStatsForBadge(safeHandleString(post.handle, post.user))} isSmall />
             </div>
-            <span className="text-xs text-gray-500">{post.handle} · {post.time}</span>
+            <span className="text-xs text-gray-500">{safeHandleString(post.handle, post.user)} · {post.time}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
