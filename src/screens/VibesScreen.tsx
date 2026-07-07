@@ -208,12 +208,14 @@ function VibeCard({
 
     const isOwnVibe = vibe.user === currentUser?.username || vibe.handle === `@${currentUser?.username}` || vibe.handle === '@you';
     if (isOwnVibe) {
-      alert("You cannot reshare your own vibe!");
+      setToastMessage("You cannot reshare your own vibe!");
+      setTimeout(() => setToastMessage(''), 2000);
       return;
     }
 
     if (reshared) {
-      alert("You have already reshared this vibe!");
+      setToastMessage("You have already reshared this vibe!");
+      setTimeout(() => setToastMessage(''), 2000);
       return;
     }
 
@@ -270,16 +272,54 @@ function VibeCard({
         counts[vibe.id] = (counts[vibe.id] ?? 0) + 1;
         localStorage.setItem('skrimchat_vibe_reshares', JSON.stringify(counts));
         setResharesCount(counts[vibe.id]);
+
+        // Save to skrimchat_reposts as well, so it shows up in Reposts tab of `/identity`
+        const repost = {
+          id: `repost_vibe_${vibe.id}_${Date.now()}`,
+          user: {
+            name: activeUser.fullName || activeUser.username || 'You',
+            username: activeUser.username || 'you',
+            avatar: activeUser.avatar || '',
+          },
+          quoteText: null,
+          originalPost: {
+            ...vibe,
+            image: vibe.thumbnail || '',
+            videoImage: vibe.thumbnail || '',
+            videoImageHover: vibe.thumbnail || '',
+            caption: vibe.caption || '',
+            text: vibe.caption || '',
+            type: vibe.videoSrc ? 'video' : 'image',
+            isReshare: true,
+            resharedFrom: vibe.handle || vibe.user || 'user',
+          },
+          time: 'now',
+          createdAt: Date.now(),
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          isLiked: false,
+          isSaved: false,
+          mood: vibe.mood || 'vibes',
+        };
+
+        const repostsList: any[] = JSON.parse(localStorage.getItem('skrimchat_reposts') || '[]');
+        repostsList.unshift(repost);
+        localStorage.setItem('skrimchat_reposts', JSON.stringify(repostsList));
+
       } catch (err) {
         console.error("LocalStorage error on reshare:", err);
       }
 
       setReshared(true);
       window.dispatchEvent(new Event('skrimchat_user_vibes_updated'));
-      alert("⚡ Vibe reshared successfully to your profile!");
+      window.dispatchEvent(new Event('skrimchat_post_reposted'));
+      setToastMessage("⚡ Vibe reshared successfully to your profile!");
+      setTimeout(() => setToastMessage(''), 2000);
     } catch (err) {
       console.error("Failed to reshare vibe:", err);
-      alert("Failed to reshare vibe.");
+      setToastMessage("Failed to reshare vibe.");
+      setTimeout(() => setToastMessage(''), 2000);
     }
   };
 

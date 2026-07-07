@@ -1470,8 +1470,9 @@ export default function IdentityScreen() {
             ) : repostItems.map((item, i) => {
               // repost objects: { originalPost, id, ... }
               const post = item.originalPost || item;
-              const url = post.image || post.images?.[0] || post.videoImageHover || post.videoImage || `https://picsum.photos/400/400?random=rp${i}`;
-              const isVideo = post.id?.startsWith('reel') || post.type === 'video';
+              const url = post.image || post.images?.[0] || post.videoImageHover || post.videoImage || post.thumbnail || post.videoSrc || `https://picsum.photos/400/400?random=rp${i}`;
+              const isVideo = post.id?.startsWith('reel') || post.type === 'video' || !!post.videoSrc;
+              const isTextOnly = !post.image && !post.images?.[0] && !post.videoImageHover && !post.videoImage && !post.thumbnail && !post.videoSrc;
               const originalUser = post.user || post.userName || post.handle || '@someone';
               const originalHandle = typeof originalUser === 'object' ? originalUser.username : originalUser;
               return (
@@ -1484,13 +1485,34 @@ export default function IdentityScreen() {
                 onClick={() => setSelectedMedia({
                   index: i,
                   type: isVideo ? 'vibe' : 'repost',
-                  urls: repostItems.map(it => { const p = it.originalPost || it; return p.image || p.images?.[0] || p.videoImageHover || p.videoImage || `https://picsum.photos/400/400?random=rp${i}`; }),
+                  urls: repostItems.map(it => { const p = it.originalPost || it; return p.image || p.images?.[0] || p.videoImageHover || p.videoImage || p.thumbnail || p.videoSrc || `https://picsum.photos/400/400?random=rp${i}`; }),
                   users: repostItems.map(it => { const p = it.originalPost || it; const u = p.user || {}; return { ...p, username: (typeof u === 'object' ? u.username : u) || p.handle || '@someone', avatar: (typeof u === 'object' ? u.avatar : '') || p.avatar || '' }; })
                 })}
               >
-                <img src={url || null} alt="repost" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => { e.currentTarget.style.display='none'; }}
-                />
+                {isTextOnly ? (
+                  <div 
+                    className="w-full h-full flex items-center justify-center p-4 text-center select-none"
+                    style={{ 
+                      backgroundColor: post.bgColor || undefined,
+                      backgroundImage: !post.bgColor ? 'linear-gradient(to bottom right, #1b0a2a, #0D0D14, #0d0010)' : undefined
+                    }}
+                  >
+                    <span className="text-white font-bold text-[10px] line-clamp-4 leading-snug">
+                      {post.caption || post.text}
+                    </span>
+                  </div>
+                ) : (post.videoSrc && !post.thumbnail && !post.image) ? (
+                  <video 
+                    src={post.videoSrc} 
+                    muted 
+                    playsInline 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                ) : (
+                  <img src={url || null} alt="repost" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => { e.currentTarget.style.display='none'; }}
+                  />
+                )}
                 {/* Repost badge */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1.5 flex items-center gap-1">
                   <Repeat className="w-3 h-3 text-green-400 shrink-0" />
