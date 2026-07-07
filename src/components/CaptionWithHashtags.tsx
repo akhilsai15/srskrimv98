@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
  */
 export const CaptionWithHashtags = ({ caption, className }: { caption: string; className?: string }) => {
   const navigate = useNavigate();
-  if (!caption) return null;
+  if (typeof caption !== 'string' || !caption) return null;
   return (
     <p className={className}>
       {caption.split(/(#[\w\u0900-\u097F\u0C00-\u0C7F]+)/g).map((part, i) =>

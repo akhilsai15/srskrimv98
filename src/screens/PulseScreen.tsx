@@ -3528,7 +3528,7 @@ export default function PulseScreen() {
           // If responding to a challenge, notify the challenger
           if (pendingChallenge) {
             try {
-              const challenger = pendingChallenge.challengerHandle.replace('@', '');
+              const challenger = (pendingChallenge.challengerHandle || '').replace('@', '');
               const inApp = JSON.parse(localStorage.getItem('skrimchat_inapp_notifs') || '[]');
               inApp.unshift({
                 id: 'challenge_notif_' + Date.now() + '_' + Math.random(),

@@ -88,8 +88,9 @@ function ProgressBars({ total, current }: { total: number; current: number }) {
 // ─── Caption with expand ──────────────────────────────────────
 function Caption({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = text.length > 80;
-  const shown = expanded || !isLong ? text : text.slice(0, 80) + '…';
+  const safeText = typeof text === 'string' ? text : '';
+  const isLong = safeText.length > 80;
+  const shown = expanded || !isLong ? safeText : safeText.slice(0, 80) + '…';
   return (
     <p className="text-white/90 text-sm leading-relaxed drop-shadow">
       {shown.split(' ').map((w, i) => (
@@ -823,8 +824,8 @@ function VibeCard({
   // Profile redirection handler
   const handleProfileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const cleanVibeUser = vibe.handle.replace(/^@/, '');
-    const cleanCurrentUser = currentUser?.username?.replace(/^@/, '');
+    const cleanVibeUser = (vibe.handle || '').replace(/^@/, '');
+    const cleanCurrentUser = (currentUser?.username || '').replace(/^@/, '');
     
     if (cleanVibeUser === cleanCurrentUser) {
       navigate('/identity');
@@ -837,17 +838,17 @@ function VibeCard({
   const handleFollowToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (followStatus.following) {
-      unfollowUser(vibe.handle);
-      setToastMessage(`Unfollowed ${vibe.user} 💔`);
+      unfollowUser(vibe.handle || '');
+      setToastMessage(`Unfollowed ${vibe.user || 'user'} 💔`);
     } else {
-      followUser(vibe.handle);
-      setToastMessage(`Following ${vibe.user}! 💜`);
+      followUser(vibe.handle || '');
+      setToastMessage(`Following ${vibe.user || 'user'}! 💜`);
       incrementStat('connectionsMade', 1);
     }
     setTimeout(() => setToastMessage(''), 2000);
   };
 
-  const isMe = vibe.handle.replace(/^@/, '') === currentUser?.username?.replace(/^@/, '');
+  const isMe = (vibe.handle || '').replace(/^@/, '') === (currentUser?.username || '').replace(/^@/, '');
 
   const handleDragEnd = (_: any, info: any) => {
     if (info.offset.y < -60) onNext();

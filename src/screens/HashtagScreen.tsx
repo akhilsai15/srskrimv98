@@ -5,12 +5,12 @@ import { getReels } from '../lib/mock/mockServices';
 
 const extractHashtags = (caption: string): string[] => {
   const regex = /#[\w\u0900-\u097F\u0C00-\u0C7F]+/g;
-  return caption.match(regex) || [];
+  return typeof caption === 'string' ? (caption.match(regex) || []) : [];
 };
 
 const CaptionWithHashtags = ({ caption, className }: { caption: string, className?: string }) => {
   const navigate = useNavigate();
-  if (!caption) return null;
+  if (typeof caption !== 'string' || !caption) return null;
   return (
     <p className={className}>
       {caption.split(/(#[\w\u0900-\u097F\u0C00-\u0C7F]+)/g).map((part, i) => 
