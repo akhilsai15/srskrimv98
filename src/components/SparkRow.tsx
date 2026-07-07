@@ -12,23 +12,7 @@ interface SparkRowProps {
 }
 
 export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, activeUserId }: SparkRowProps) {
-  // Track sparks that have recently been viewed so we can animate them grey then out
-  const [fadingOut, setFadingOut] = useState<Set<string>>(new Set());
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const otherSparks = sparks.filter(s => !s.isOwn);
-    otherSparks.forEach(spark => {
-      const id = spark.id || spark.userId;
-      if (spark.hasViewed && !fadingOut.has(id) && !hidden.has(id)) {
-        // Start fade-to-grey immediately, then disappear after 1.5s
-        setFadingOut(prev => new Set([...prev, id]));
-        setTimeout(() => {
-          setHidden(prev => new Set([...prev, id]));
-        }, 1500);
-      }
-    });
-  }, [sparks]);
+  // Sort other sparks so unviewed sparks are placed at the front, and viewed ones are placed at the back (never hidden/faded out completely)
 
   const getEnergyColor = (energy: SparkEnergy) => {
     switch (energy) {
@@ -55,6 +39,15 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
   const ownSparks = sparks.filter(s => s.isOwn);
   const otherSparks = sparks.filter(s => !s.isOwn);
   const firstOwnSpark = ownSparks[0];
+
+  // Sort other sparks so unviewed sparks are placed at the front, and viewed ones are placed at the back (never hidden/faded out completely)
+  const sortedOtherSparks = [...otherSparks].sort((a, b) => {
+    const aViewed = !!a.hasViewed;
+    const bViewed = !!b.hasViewed;
+    if (aViewed && !bViewed) return 1;
+    if (!aViewed && bViewed) return -1;
+    return 0;
+  });
 
   const mockUserStr = localStorage.getItem('skrimchat_mock_user');
   const localUser = mockUserStr ? JSON.parse(mockUserStr) : null;
@@ -112,12 +105,8 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
       </motion.div>
 
       {/* Sparks */}
-      {otherSparks.map((spark, index) => {
-         const sparkId = spark.id || spark.userId;
+      {sortedOtherSparks.map((spark, index) => {
          const hasViewed = spark.hasViewed;
-         const isFading = fadingOut.has(sparkId);
-         const isHidden = hidden.has(sparkId);
-         if (isHidden) return null;
          const isNova = spark.energy === 'NOVA';
          
          const now = Date.now();
@@ -157,8 +146,8 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
            <motion.div
              key={spark.id || spark.userId}
              initial={{ scale: 0, opacity: 0 }}
-             animate={isFading ? { scale: 0.85, opacity: 0, filter: 'grayscale(1)' } : { scale: 1, opacity: 1, filter: 'grayscale(0)' }}
-             transition={isFading ? { duration: 0.8, ease: 'easeOut' } : { type: "spring", damping: 15, delay: index * 0.05 + 0.1 }}
+             animate={{ scale: 1, opacity: 1, filter: hasViewed ? 'grayscale(0.3)' : 'grayscale(0)' }}
+             transition={{ type: "spring", damping: 15, delay: index * 0.05 + 0.1 }}
              onClick={() => onSparkClick(spark)}
              className={`flex flex-col items-center gap-1 min-w-[72px] shrink-0 cursor-pointer group relative ${activeUserId === spark.userId ? 'scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]' : ''} transition-all duration-300`}
            >

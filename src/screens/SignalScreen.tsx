@@ -11,6 +11,7 @@ import { useNotificationStore } from '../store/notificationStore';
 import { ArrowLeft } from 'lucide-react';
 import { SparkViewer } from '../components/SparkViewer';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { deleteRecord } from '../lib/services/mediaStorage';
 
 export default function SignalScreen() {
   const navigate = useNavigate();
@@ -263,7 +264,14 @@ export default function SignalScreen() {
           onClose={() => setActiveSpark(null)}
           currentUser={currentUser}
           initialActiveSheet="highlight"
-          onDelete={() => setActiveSpark(null)}
+          onDelete={async (id: string) => {
+            try {
+              await deleteRecord('sparks', id);
+            } catch (e) {
+              console.error("Failed to delete spark:", e);
+            }
+            setActiveSpark(null);
+          }}
         />
       )}
       {activeGroup && currentUser && (
@@ -273,7 +281,14 @@ export default function SignalScreen() {
           onClose={() => setActiveGroup(null)}
           currentUser={currentUser}
           initialActiveSheet="highlight"
-          onDelete={() => setActiveGroup(null)}
+          onDelete={async (id: string) => {
+            try {
+              await deleteRecord('sparks', id);
+            } catch (e) {
+              console.error("Failed to delete spark:", e);
+            }
+            setActiveGroup(null);
+          }}
         />
       )}
       {/* NOTIFICATION SETTINGS */}

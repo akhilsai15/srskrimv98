@@ -2625,6 +2625,27 @@ export default function PulseScreen() {
     setSearchParams(searchParams, { replace: true });
   }, [searchParams]);
 
+  // When an "Add Yours" chain is accepted in SparkViewer, it stashes the
+  // chain in localStorage and navigates here with `?chain=1`. Pick that up
+  // and pop the composer straight open with the chain context attached,
+  // then clear both the param and the stashed chain.
+  useEffect(() => {
+    if (searchParams.get('chain') !== '1') return;
+    try {
+      const pending = JSON.parse(localStorage.getItem('skrimchat_pending_chain') || 'null');
+      if (pending) {
+        setPendingChain({
+          prompt: pending.prompt || '',
+          chainId: pending.chainId || '',
+        });
+        setIsSparkCreatorOpen(true);
+        localStorage.removeItem('skrimchat_pending_chain');
+      }
+    } catch {}
+    searchParams.delete('chain');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams]);
+
   // Safe comment controls validator
   useEffect(() => {
     if (commentControlsPostId) {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { SparkViewer } from '../components/SparkViewer';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { getSparks } from '../lib/mock/mockServices';
+import { deleteRecord } from '../lib/services/mediaStorage';
 
 /**
  * Opens a single Spark directly by ID — reached by tapping a "Spark" bubble
@@ -79,6 +80,14 @@ export default function SparkDetailScreen() {
       onClose={() => navigate(-1)}
       currentUser={currentUser}
       onSparkViewed={handleSparkViewed}
+      onDelete={async (id: string) => {
+        try {
+          await deleteRecord('sparks', id);
+        } catch (e) {
+          console.error("Failed to delete spark:", e);
+        }
+        navigate(-1);
+      }}
     />
   );
 }

@@ -1228,7 +1228,16 @@ export function SparkViewer({
   const handleAddYoursTap = () => {
     if (!spark.addYoursPrompt) return;
     onClose();
-    onAddYours?.({ prompt: spark.addYoursPrompt, chainId: spark.id });
+    if (onAddYours) {
+      onAddYours({ prompt: spark.addYoursPrompt, chainId: spark.id });
+    } else {
+      try {
+        const chainData = { prompt: spark.addYoursPrompt, chainId: spark.id };
+        localStorage.setItem('skrimchat_pending_chain', JSON.stringify(chainData));
+      } catch (e) {}
+      showToast("Chain joined! Create your response ⚡");
+      setTimeout(() => { try { (window as any).__skrimNavigate?.('/?chain=1'); } catch(e){} }, 200);
+    }
   };
 
   const handleShareOption = (platform: string) => {
