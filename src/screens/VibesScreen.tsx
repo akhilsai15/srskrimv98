@@ -276,9 +276,15 @@ function VibeCard({
         // Save to skrimchat_reposts as well, so it shows up in Reposts tab of `/identity`
         const repost = {
           id: `repost_vibe_${vibe.id}_${Date.now()}`,
+          type: 'repost',
           user: {
             name: activeUser.fullName || activeUser.username || 'You',
             username: activeUser.username || 'you',
+            avatar: activeUser.avatar || '',
+          },
+          repostedBy: {
+            user: activeUser.fullName || activeUser.username || 'You',
+            handle: activeUser.username ? `@${activeUser.username.replace('@', '')}` : '@you',
             avatar: activeUser.avatar || '',
           },
           quoteText: null,

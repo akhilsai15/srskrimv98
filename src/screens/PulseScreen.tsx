@@ -229,7 +229,7 @@ function TextPost({ post, onLike, onComment, onShare, onSave, onReact, navigate,
         </AnimatePresence>
 
         <p className={`text-[15px] leading-relaxed font-medium ${hasCustomColor ? 'text-black' : 'text-white'}`}>
-          {post.text.split(' ').map((w: string, i: number) =>
+          {post.text && typeof post.text === 'string' ? post.text.split(' ').map((w: string, i: number) =>
             w.startsWith('#') ? (
               <span
                 key={i}
@@ -249,7 +249,7 @@ function TextPost({ post, onLike, onComment, onShare, onSave, onReact, navigate,
             ) : (
               w + ' '
             )
-          )}
+          ) : null}
         </p>
       </div>
 
@@ -803,7 +803,7 @@ function PostActions({ post, onLike, onComment, onShare, onSave, onReact, naviga
           onReact={(reactionId) => onReact?.(post.id, reactionId)}
         />
       )}
-      {post.caption && (
+      {post.caption && typeof post.caption === 'string' && (
         <p className="text-sm leading-relaxed">
           <span className="font-semibold text-white mr-2">{post.user}</span>
           {post.caption.split(' ').map((w: string, i: number) =>
