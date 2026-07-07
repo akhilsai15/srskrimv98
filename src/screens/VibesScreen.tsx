@@ -1232,6 +1232,9 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<'image' | 'video' | null>(null);
   const [mediaLimitWarning, setMediaLimitWarning] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoTrimStart, setVideoTrimStart] = useState<number>(0);
+  const [videoTrimDuration, setVideoTrimDuration] = useState<number>(30);
   const [mood, setMood] = useState<string>(getDefaultMood());
   const [music, setMusic] = useState<{ url: string; title: string; start_ms: number } | null>(null);
   const [useOriginalAudio, setUseOriginalAudio] = useState<boolean>(true);
@@ -1244,12 +1247,16 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
   const [postType, setPostType] = useState<'text' | 'image' | 'video'>('text');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   const reset = () => {
     setCaption('');
     setMediaUrl(null);
     setMediaKind(null);
     setMediaLimitWarning(null);
+    setVideoDuration(0);
+    setVideoTrimStart(0);
+    setVideoTrimDuration(30);
     setMood(getDefaultMood());
     setMusic(null);
     setUseOriginalAudio(true);
@@ -1263,6 +1270,25 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
   };
 
   const handleClose = () => { reset(); onClose(); };
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || mediaKind !== 'video') return;
+
+    video.currentTime = videoTrimStart;
+
+    const handleTimeUpdate = () => {
+      const maxTime = videoTrimStart + videoTrimDuration;
+      if (video.currentTime >= maxTime || video.currentTime < videoTrimStart) {
+        video.currentTime = videoTrimStart;
+      }
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [mediaUrl, mediaKind, videoTrimStart, videoTrimDuration]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1280,6 +1306,10 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
       videoElement.onloadedmetadata = () => {
         URL.revokeObjectURL(fileUrl);
         const duration = videoElement.duration;
+        setVideoDuration(duration);
+        setVideoTrimStart(0);
+        setVideoTrimDuration(Math.min(30, duration));
+
         let warning: string | null = null;
         if (duration > 120) {
           warning = `✨ Video auto-trimmed! Length exceeds the 2-minute standard. It will auto-trim to the first 2 minutes (120s).`;
@@ -1367,7 +1397,7 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
       caption,
       audio: finalUseOriginal ? 'Original Audio 🎤' : (music?.title || 'Original Audio 🎤'),
       audioUrl: finalUseOriginal ? undefined : (music?.url || undefined),
-      duration: postType === 'image' ? imageDuration : (postType === 'text' ? 15 : undefined),
+      duration: postType === 'image' ? imageDuration : (postType === 'text' ? 15 : (videoDuration > 0 ? Math.floor(videoTrimDuration) : undefined)),
       start_ms: finalUseOriginal ? undefined : (music ? music.start_ms : undefined),
       mood,
       createdAt: Date.now(),
@@ -1387,7 +1417,11 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
       hashtags: parsedHashtags,
       isLiked: false,
       isSaved: false,
-      ...(postType === 'video' ? { videoSrc: mediaUrl } : {}),
+      ...(postType === 'video' ? { 
+        videoSrc: videoDuration > 0 
+          ? `${mediaUrl}#t=${videoTrimStart},${videoTrimStart + videoTrimDuration}` 
+          : mediaUrl 
+      } : {}),
     } as VibePost;
 
     try {
@@ -1552,7 +1586,7 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
                     <div className="flex flex-col gap-2">
                       <div className="relative w-full aspect-[16/10] max-h-[30vh] rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
                         {mediaKind === 'video' ? (
-                          <video src={mediaUrl} className="w-full h-full object-cover" controls muted={!useOriginalAudio} />
+                          <video ref={previewVideoRef} src={mediaUrl} className="w-full h-full object-cover" controls muted={!useOriginalAudio} />
                         ) : (
                           <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
                         )}
@@ -1568,6 +1602,91 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
                         <div className="p-2.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/25 flex items-center gap-2 text-xs text-white/90">
                           <span className="text-sm">⚡</span>
                           <span className="font-medium">{mediaLimitWarning}</span>
+                        </div>
+                      )}
+
+                      {/* Video Trimmer widget for Vibes */}
+                      {mediaKind === 'video' && videoDuration > 0 && (
+                        <div className="bg-[#141414] border border-[#B026FF]/30 rounded-2xl p-4 flex flex-col gap-4 mt-1 shadow-[0_8px_32px_rgba(176,38,255,0.08)]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-[#B026FF] font-black uppercase tracking-widest">✂️ Video Trimmer</span>
+                              <span className="text-[10px] bg-white/5 border border-white/10 text-white/60 px-2 py-0.5 rounded-full truncate max-w-[150px] font-medium">
+                                Clip Region Selector
+                              </span>
+                            </div>
+                            {/* Duration Selector */}
+                            <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10">
+                              {[30, 60, 120].map(d => {
+                                if (videoDuration < d) return null;
+                                return (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => {
+                                      const actualD = Math.min(d, videoDuration);
+                                      setVideoTrimDuration(actualD);
+                                      if (videoTrimStart + actualD > videoDuration) {
+                                        setVideoTrimStart(Math.max(0, videoDuration - actualD));
+                                      }
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${videoTrimDuration === d ? 'bg-[#B026FF] text-white' : 'text-white/40 hover:text-white'}`}
+                                  >
+                                    {d >= 60 ? `${d / 60}m` : `${d}s`}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Filmstrip Track representation */}
+                          <div className="relative h-6 bg-white/5 rounded-lg overflow-hidden border border-white/10 flex items-center">
+                            <div className="absolute inset-0 flex items-center justify-between px-1 gap-[3px] opacity-25 pointer-events-none">
+                              {Array.from({ length: 12 }).map((_, idx) => (
+                                <div key={idx} className="flex-1 h-5 border border-white/10 rounded-sm bg-gradient-to-b from-white/5 to-transparent flex flex-col justify-between p-0.5">
+                                  <div className="flex justify-between">
+                                    <div className="w-1 h-1 rounded-full bg-white/40" />
+                                    <div className="w-1 h-1 rounded-full bg-white/40" />
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <div className="w-1 h-1 rounded-full bg-white/40" />
+                                    <div className="w-1 h-1 rounded-full bg-white/40" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Highlighted selection area */}
+                            <div 
+                              className="absolute h-full bg-gradient-to-r from-[#B026FF]/20 to-[#00F0FF]/20 border-l-2 border-r-2 border-[#00F0FF] flex items-center justify-between shadow-[inset_0_0_12px_rgba(0,240,255,0.15)]"
+                              style={{ 
+                                left: `${(videoTrimStart / videoDuration) * 100}%`, 
+                                width: `${(videoTrimDuration / videoDuration) * 100}%` 
+                              }}
+                            >
+                              <div className="w-1 h-3 bg-[#00F0FF] rounded-full ml-0.5" />
+                              <div className="w-1 h-3 bg-[#00F0FF] rounded-full mr-0.5" />
+                            </div>
+                          </div>
+
+                          {/* Sliders and Labels */}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex justify-between items-center text-[10px] text-white/50 font-medium font-mono">
+                              <span>Start: {Math.floor(videoTrimStart)}s</span>
+                              <span>End: {Math.floor(videoTrimStart + videoTrimDuration)}s</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={Math.max(0, videoDuration - videoTrimDuration)}
+                              step={0.5}
+                              value={videoTrimStart}
+                              onChange={e => {
+                                setVideoTrimStart(Number(e.target.value));
+                              }}
+                              className="w-full accent-[#00F0FF] cursor-ew-resize py-1"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

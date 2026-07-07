@@ -1579,7 +1579,40 @@ function SchedulePicker({ isOpen, onClose, initialValue, onConfirm, onClear }: {
 
 // Extract a preview frame from a video to use as a high-quality static thumbnail.
 function generateVideoThumbnail(videoUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
+  const getFallback = (seed: string) => {
+    const hash = seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = [
+      ['#B026FF', '#00F0FF'],
+      ['#FF416C', '#FF4B2B'],
+      ['#8A2387', '#E94057'],
+      ['#3A1C71', '#D76D77'],
+      ['#FF007F', '#7F00FF']
+    ];
+    const pair = colors[hash % colors.length];
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="100%" height="100%">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${pair[0]};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${pair[1]};stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="640" height="360" fill="url(#grad)" />
+        <path d="M 0,30 L 640,30 M 0,90 L 640,90 M 0,150 L 640,150 M 0,210 L 640,210 M 0,270 L 640,270 M 0,330 L 640,330" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+        <path d="M 60,0 L 60,360 M 180,0 L 180,360 M 300,0 L 300,360 M 420,0 L 420,360 M 540,0 L 540,360" stroke="rgba(255,255,255,0.06)" stroke-width="1" />
+        <circle cx="320" cy="180" r="80" fill="white" opacity="0.1" filter="blur(15px)" />
+        <g transform="translate(295, 155) scale(1.2)">
+          <circle cx="20" cy="20" r="19" fill="rgba(0,0,0,0.4)" stroke="white" stroke-width="2" />
+          <polygon points="16,12 28,20 16,28" fill="white" />
+        </g>
+        <text x="50%" y="80%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="16" font-weight="bold" letter-spacing="1" opacity="0.9">PULSE VIDEO</text>
+      </svg>
+    `.trim().replace(/"/g, "'").replace(/\n/g, '').replace(/ +/g, ' ');
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  };
+
+  return new Promise((resolve) => {
     const video = document.createElement('video');
     video.style.display = 'none';
     video.preload = 'auto';
@@ -1588,8 +1621,8 @@ function generateVideoThumbnail(videoUrl: string): Promise<string> {
     
     const timeoutId = setTimeout(() => {
       cleanup();
-      reject(new Error('Thumbnail generation timed out'));
-    }, 4000);
+      resolve(getFallback(videoUrl));
+    }, 3500);
 
     const cleanup = () => {
       clearTimeout(timeoutId);
@@ -1611,17 +1644,17 @@ function generateVideoThumbnail(videoUrl: string): Promise<string> {
           resolve(dataUrl);
         } else {
           cleanup();
-          reject(new Error('Could not get 2D canvas context'));
+          resolve(getFallback(videoUrl));
         }
       } catch (err) {
         cleanup();
-        reject(err);
+        resolve(getFallback(videoUrl));
       }
     };
 
     video.onerror = () => {
       cleanup();
-      reject(new Error('Failed to load video for thumbnail'));
+      resolve(getFallback(videoUrl));
     };
 
     video.onloadedmetadata = () => {
@@ -1647,6 +1680,9 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
   const [text, setText] = useState('');
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [mediaLimitWarning, setMediaLimitWarning] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [videoTrimStart, setVideoTrimStart] = useState<number>(0);
+  const [videoTrimDuration, setVideoTrimDuration] = useState<number>(30);
   const [isReading, setIsReading] = useState(false);
   const [mood, setMood] = useState<string>(getDefaultMood());
   const [music, setMusic] = useState<{ url: string; title: string; start_ms: number; duration_s?: number } | null>(null);
@@ -1662,11 +1698,15 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
   const [scheduledFor, setScheduledFor] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   const reset = () => {
     setText('');
     setMedia([]);
     setMediaLimitWarning(null);
+    setVideoDuration(0);
+    setVideoTrimStart(0);
+    setVideoTrimDuration(30);
     setIsReading(false);
     setMood(getDefaultMood());
     setMusic(null);
@@ -1681,6 +1721,25 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
     setPollOptions(['', '']);
     setScheduledFor(null);
   };
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || !media.some(m => m.kind === 'video')) return;
+
+    video.currentTime = videoTrimStart;
+
+    const handleTimeUpdate = () => {
+      const maxTime = videoTrimStart + videoTrimDuration;
+      if (video.currentTime >= maxTime || video.currentTime < videoTrimStart) {
+        video.currentTime = videoTrimStart;
+      }
+    };
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    return () => {
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [media, videoTrimStart, videoTrimDuration]);
 
   // Hydrate from a selected draft when the sheet opens with one — runs only
   // on the isOpen transition (not on every draft object change) so editing
@@ -1800,6 +1859,10 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
           videoElement.onloadedmetadata = () => {
             URL.revokeObjectURL(objectUrl);
             const duration = videoElement.duration;
+            setVideoDuration(duration);
+            setVideoTrimStart(0);
+            setVideoTrimDuration(Math.min(30, duration));
+
             let warning: string | null = null;
             if (duration > 120) {
               warning = `✨ Video auto-trimmed! Length exceeds the 2-minute standard. It will auto-trim to the first 2 minutes (120s).`;
@@ -1911,7 +1974,18 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
     if (isPollMode) {
       newPost = { ...base, type: 'poll', text, pollOptions: validPollOptions };
     } else if (video) {
-      newPost = { ...base, type: 'video_thumb', videoSrc: video.url, thumbnail: video.thumbnail || video.url, image: video.thumbnail || video.url, caption: text, duration: '0:00' };
+      const trimmedVideoSrc = videoDuration > 0
+        ? `${video.url}#t=${videoTrimStart},${videoTrimStart + videoTrimDuration}`
+        : video.url;
+      newPost = { 
+        ...base, 
+        type: 'video_thumb', 
+        videoSrc: trimmedVideoSrc, 
+        thumbnail: video.thumbnail || video.url, 
+        image: video.thumbnail || video.url, 
+        caption: text, 
+        duration: `${Math.floor(videoTrimDuration)}s` 
+      };
     } else if (images.length > 1) {
       newPost = { ...base, type: 'multi_image', images, image: images[0], caption: text };
     } else if (images.length === 1) {
@@ -2052,7 +2126,7 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
                     {media.map(item => (
                       <div key={item.id} className={`relative rounded-xl overflow-hidden bg-black ${media.length === 1 && item.kind === 'video' ? 'aspect-video' : 'aspect-square'}`}>
                         {item.kind === 'video' ? (
-                          <video src={item.url} className="w-full h-full object-cover" controls />
+                          <video ref={previewVideoRef} src={item.url} className="w-full h-full object-cover" controls />
                         ) : (
                           <img src={item.url} alt="" className="w-full h-full object-cover" />
                         )}
@@ -2077,6 +2151,91 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
                     <div className="p-2.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/25 flex items-center gap-2 text-xs text-white/90">
                       <span className="text-sm">⚡</span>
                       <span className="font-medium">{mediaLimitWarning}</span>
+                    </div>
+                  )}
+
+                  {/* Video Trimmer widget for Pulse */}
+                  {videoDuration > 0 && media.some(m => m.kind === 'video') && (
+                    <div className="bg-[#141414] border border-[#B026FF]/30 rounded-2xl p-4 flex flex-col gap-4 mt-1 shadow-[0_8px_32px_rgba(176,38,255,0.08)]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-[#B026FF] font-black uppercase tracking-widest">✂️ Video Trimmer</span>
+                          <span className="text-[10px] bg-white/5 border border-white/10 text-white/60 px-2 py-0.5 rounded-full truncate max-w-[150px] font-medium">
+                            Clip Region Selector
+                          </span>
+                        </div>
+                        {/* Duration Selector */}
+                        <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10">
+                          {[30, 60, 120].map(d => {
+                            if (videoDuration < d) return null;
+                            return (
+                              <button
+                                key={d}
+                                type="button"
+                                onClick={() => {
+                                  const actualD = Math.min(d, videoDuration);
+                                  setVideoTrimDuration(actualD);
+                                  if (videoTrimStart + actualD > videoDuration) {
+                                    setVideoTrimStart(Math.max(0, videoDuration - actualD));
+                                  }
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-[9px] font-bold transition-all ${videoTrimDuration === d ? 'bg-[#B026FF] text-white' : 'text-white/40 hover:text-white'}`}
+                              >
+                                {d >= 60 ? `${d / 60}m` : `${d}s`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Filmstrip Track representation */}
+                      <div className="relative h-6 bg-white/5 rounded-lg overflow-hidden border border-white/10 flex items-center">
+                        <div className="absolute inset-0 flex items-center justify-between px-1 gap-[3px] opacity-25 pointer-events-none">
+                          {Array.from({ length: 12 }).map((_, idx) => (
+                            <div key={idx} className="flex-1 h-5 border border-white/10 rounded-sm bg-gradient-to-b from-white/5 to-transparent flex flex-col justify-between p-0.5">
+                              <div className="flex justify-between">
+                                <div className="w-1 h-1 rounded-full bg-white/40" />
+                                <div className="w-1 h-1 rounded-full bg-white/40" />
+                              </div>
+                              <div className="flex justify-between">
+                                <div className="w-1 h-1 rounded-full bg-white/40" />
+                                <div className="w-1 h-1 rounded-full bg-white/40" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Highlighted selection area */}
+                        <div 
+                          className="absolute h-full bg-gradient-to-r from-[#B026FF]/20 to-[#00F0FF]/20 border-l-2 border-r-2 border-[#00F0FF] flex items-center justify-between shadow-[inset_0_0_12px_rgba(0,240,255,0.15)]"
+                          style={{ 
+                            left: `${(videoTrimStart / videoDuration) * 100}%`, 
+                            width: `${(videoTrimDuration / videoDuration) * 100}%` 
+                          }}
+                        >
+                          <div className="w-1 h-3 bg-[#00F0FF] rounded-full ml-0.5" />
+                          <div className="w-1 h-3 bg-[#00F0FF] rounded-full mr-0.5" />
+                        </div>
+                      </div>
+
+                      {/* Sliders and Labels */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-[10px] text-white/50 font-medium font-mono">
+                          <span>Start: {Math.floor(videoTrimStart)}s</span>
+                          <span>End: {Math.floor(videoTrimStart + videoTrimDuration)}s</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(0, videoDuration - videoTrimDuration)}
+                          step={0.5}
+                          value={videoTrimStart}
+                          onChange={e => {
+                            setVideoTrimStart(Number(e.target.value));
+                          }}
+                          className="w-full accent-[#00F0FF] cursor-ew-resize py-1"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
