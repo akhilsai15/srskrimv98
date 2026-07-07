@@ -61,7 +61,13 @@ export function PulseCommentsSheet({
   };
 
   const handlePulseComment = (id: string) =>
-    setComments(comments.map(c => c.id === id ? { ...c, pulses: c.pulses + 1 } : c));
+    setComments(comments.map(c => {
+      if (c.id === id) {
+        if (c.hasPulsed) return c;
+        return { ...c, pulses: c.pulses + 1, hasPulsed: true };
+      }
+      return c;
+    }));
 
   return (
     <AnimatePresence>
@@ -179,9 +185,9 @@ function CommentRow({ comment, onPulse, onReply }: { comment: PulseComment; onPu
         )}
         <p className="text-sm text-gray-200 mt-0.5">{comment.text}</p>
         <div className="flex gap-4 mt-2">
-          <button className="flex items-center gap-1 group" onClick={onPulse}>
-            <Zap className="w-4 h-4 text-gray-400 group-hover:text-[#B026FF] group-active:scale-125 transition-transform" />
-            <span className="text-xs text-gray-400 font-medium">{comment.pulses}</span>
+          <button className="flex items-center gap-1 group" onClick={onPulse} disabled={comment.hasPulsed}>
+            <Zap className={`w-4 h-4 transition-transform ${comment.hasPulsed ? 'text-[#B026FF] fill-[#B026FF]' : 'text-gray-400 group-hover:text-[#B026FF] group-active:scale-125'}`} />
+            <span className={`text-xs font-medium ${comment.hasPulsed ? 'text-[#B026FF]' : 'text-gray-400'}`}>{comment.pulses}</span>
           </button>
           <button className="flex items-center gap-1 group" onClick={onReply}>
             <MessageCircle className="w-4 h-4 text-gray-400 group-hover:text-blue-400" />

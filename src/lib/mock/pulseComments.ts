@@ -40,6 +40,7 @@ export interface PulseComment {
   pulses: number;
   time: string;
   avatar: string;
+  hasPulsed?: boolean;
 }
 
 /**
