@@ -54,7 +54,8 @@ export interface UserStats {
 }
 
 export function generateMockStatsForBadge(username: string): UserStats {
-   const hash = username.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+   const safeUsername = typeof username === 'string' ? username : '';
+   const hash = safeUsername.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
    return {
      pulseScore: (hash * 1234) % 25000,
      blazeRun: (hash * 34) % 365,

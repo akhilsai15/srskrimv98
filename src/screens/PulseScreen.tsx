@@ -188,7 +188,7 @@ function TextPost({ post, onLike, onComment, onShare, onSave, onReact, navigate,
       )}
       {/* User row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${post.handle.replace('@', '')}`)}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
           <AvatarWithRing src={post.avatar} size="sm" isStory={false} showOnlineDot username={post.handle} />
           <div>
             <div className="flex items-center gap-2">
@@ -370,7 +370,7 @@ function PollPost({ post, onLike, onComment, onShare, onSave, navigate, currentU
     <div className="mx-4 mb-6 rounded-3xl bg-[#12001a] border border-white/8 overflow-hidden shadow-xl">
       {/* User row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${post.handle.replace('@', '')}`)}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
           <AvatarWithRing src={post.avatar} size="sm" isStory={false} showOnlineDot username={post.handle} />
           <div>
             <div className="flex items-center gap-2">
@@ -487,7 +487,7 @@ function RepostCard({ post, onLike, onComment, onShare, onSave, onReact, navigat
             <path d="M19.5 9.5v3a4 4 0 0 1-4 4h-7.5" />
             <path d="M11 19.5l-3.5-3 3.5-3" />
           </svg>
-        <span className="cursor-pointer hover:underline" onClick={() => navigate(`/profile/${post.repostedBy.handle.replace('@', '')}`)}>
+        <span className="cursor-pointer hover:underline" onClick={() => navigate(`/profile/${(post.repostedBy?.handle || '').replace('@', '')}`)}>
           {post.repostedBy.user}
         </span>
         <span>reposted</span>
@@ -623,7 +623,7 @@ function MultiImagePost({ post, onLike, onComment, onShare, onSave, onReact, nav
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${post.handle.replace('@', '')}`)}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
           <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
           <div>
             <div className="flex items-center gap-2">
@@ -907,7 +907,7 @@ function VideoThumbPost({ post, onLike, onComment, onShare, onSave, onReact, nav
   return (
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${post.handle.replace('@', '')}`)}>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
           <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
           <div>
             <div className="flex items-center gap-2">
@@ -1096,7 +1096,7 @@ function ImagePost({ post, onLike, onComment, onShare, onSave, onReact, navigate
     <div ref={containerRef} className="flex flex-col gap-3 pb-6 border-b border-white/5">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/profile/${post.handle.replace('@', '')}`)}>
+        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate(`/profile/${(post.handle || '').replace('@', '')}`)}>
           <AvatarWithRing src={post.avatar} size="sm" isStory showOnlineDot username={post.handle} />
           <div>
             <div className="flex items-center gap-2">
