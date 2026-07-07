@@ -144,7 +144,7 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
 
          return (
            <motion.div
-             key={spark.id || spark.userId}
+             key={`spark-row-item-${spark.id || spark.userId || index}_${index}`}
              initial={{ scale: 0, opacity: 0 }}
              animate={{ scale: 1, opacity: 1, filter: hasViewed ? 'grayscale(0.3)' : 'grayscale(0)' }}
              transition={{ type: "spring", damping: 15, delay: index * 0.05 + 0.1 }}
