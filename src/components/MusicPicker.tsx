@@ -231,22 +231,26 @@ export function MusicPicker({ isOpen, onClose, onSelect, currentMusic, context =
           </div>
           {/* Duration Selector */}
           <div className="flex bg-white/5 p-0.5 rounded-lg border border-white/10">
-            {[15, 30].map(d => (
-              <button
-                key={d}
-                onClick={() => {
-                  setClipDuration(d);
-                  // Ensure start time doesn't exceed new bounds
-                  if (currentStart + d > trackDuration) {
-                    onStartChange(Math.max(0, trackDuration - d));
-                  }
-                  setIsTrimPreviewPlaying(true);
-                }}
-                className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${clipDuration === d ? 'bg-[#B026FF] text-white' : 'text-white/40 hover:text-white'}`}
-              >
-                {d}s
-              </button>
-            ))}
+            {[15, 30, 60, 120].map(d => {
+              if (trackDuration < d && d !== 15) return null; // Always show at least 15s, otherwise hide if exceeds file duration
+              return (
+                <button
+                  key={d}
+                  onClick={() => {
+                    const actualD = Math.min(d, trackDuration);
+                    setClipDuration(actualD);
+                    // Ensure start time doesn't exceed new bounds
+                    if (currentStart + actualD > trackDuration) {
+                      onStartChange(Math.max(0, trackDuration - actualD));
+                    }
+                    setIsTrimPreviewPlaying(true);
+                  }}
+                  className={`px-2 py-1 rounded-md text-[9px] font-bold transition-all ${clipDuration === d ? 'bg-[#B026FF] text-white' : 'text-white/40 hover:text-white'}`}
+                >
+                  {d >= 60 ? `${d / 60}m` : `${d}s`}
+                </button>
+              );
+            })}
           </div>
         </div>
 

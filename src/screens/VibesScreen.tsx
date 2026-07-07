@@ -1231,6 +1231,7 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
   const [caption, setCaption] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaKind, setMediaKind] = useState<'image' | 'video' | null>(null);
+  const [mediaLimitWarning, setMediaLimitWarning] = useState<string | null>(null);
   const [mood, setMood] = useState<string>(getDefaultMood());
   const [music, setMusic] = useState<{ url: string; title: string; start_ms: number } | null>(null);
   const [useOriginalAudio, setUseOriginalAudio] = useState<boolean>(true);
@@ -1248,6 +1249,7 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
     setCaption('');
     setMediaUrl(null);
     setMediaKind(null);
+    setMediaLimitWarning(null);
     setMood(getDefaultMood());
     setMusic(null);
     setUseOriginalAudio(true);
@@ -1269,15 +1271,59 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
     const kind = file.type.startsWith('video/') ? 'video' : file.type.startsWith('image/') ? 'image' : null;
     if (!kind) return;
     setIsReading(true);
-    const r = new FileReader();
-    r.onload = () => {
-      setMediaUrl(r.result as string);
-      setMediaKind(kind);
-      setPostType(kind); // Automatically sync segmented tab
-      setBgColor(null); // Clear color tag if media is uploaded
-      setIsReading(false);
-    };
-    r.readAsDataURL(file);
+
+    if (kind === 'video') {
+      const videoElement = document.createElement('video');
+      videoElement.preload = 'metadata';
+      const fileUrl = URL.createObjectURL(file);
+      videoElement.src = fileUrl;
+      videoElement.onloadedmetadata = () => {
+        URL.revokeObjectURL(fileUrl);
+        const duration = videoElement.duration;
+        let warning: string | null = null;
+        if (duration > 120) {
+          warning = `✨ Video auto-trimmed! Length exceeds the 2-minute standard. It will auto-trim to the first 2 minutes (120s).`;
+        } else if (duration < 30) {
+          warning = `⚠️ Video is too short (${Math.floor(duration)}s). The minimum is 30s; it will auto-loop to meet the standard.`;
+        } else {
+          warning = `✨ Standard met! Video duration is ${Math.floor(duration)}s (within the 30s to 2 min range).`;
+        }
+        setMediaLimitWarning(warning);
+
+        const r = new FileReader();
+        r.onload = () => {
+          setMediaUrl(r.result as string);
+          setMediaKind(kind);
+          setPostType(kind);
+          setBgColor(null);
+          setIsReading(false);
+        };
+        r.readAsDataURL(file);
+      };
+      videoElement.onerror = () => {
+        setMediaLimitWarning(null);
+        const r = new FileReader();
+        r.onload = () => {
+          setMediaUrl(r.result as string);
+          setMediaKind(kind);
+          setPostType(kind);
+          setBgColor(null);
+          setIsReading(false);
+        };
+        r.readAsDataURL(file);
+      };
+    } else {
+      setMediaLimitWarning(null);
+      const r = new FileReader();
+      r.onload = () => {
+        setMediaUrl(r.result as string);
+        setMediaKind(kind);
+        setPostType(kind);
+        setBgColor(null);
+        setIsReading(false);
+      };
+      r.readAsDataURL(file);
+    }
   };
 
   // Autosize the textarea
@@ -1503,19 +1549,27 @@ function VibeCreateSheet({ isOpen, onClose, currentUser, onPost }: {
                 <div className="flex flex-col gap-1.5">
                   <label className="text-white/40 text-[10px] uppercase tracking-wider font-bold">Vibe Media Content</label>
                   {mediaUrl ? (
-                    <div className="relative w-full aspect-[16/10] max-h-[30vh] rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
-                      {mediaKind === 'video' ? (
-                        <video src={mediaUrl} className="w-full h-full object-cover" controls muted={!useOriginalAudio} />
-                      ) : (
-                        <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
+                    <div className="flex flex-col gap-2">
+                      <div className="relative w-full aspect-[16/10] max-h-[30vh] rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
+                        {mediaKind === 'video' ? (
+                          <video src={mediaUrl} className="w-full h-full object-cover" controls muted={!useOriginalAudio} />
+                        ) : (
+                          <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { setMediaUrl(null); setMediaKind(null); setMediaLimitWarning(null); }}
+                          className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/70 hover:bg-red-600/90 rounded-full flex items-center justify-center transition-colors"
+                        >
+                          <X className="w-4 h-4 text-white" />
+                        </button>
+                      </div>
+                      {mediaLimitWarning && (
+                        <div className="p-2.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/25 flex items-center gap-2 text-xs text-white/90">
+                          <span className="text-sm">⚡</span>
+                          <span className="font-medium">{mediaLimitWarning}</span>
+                        </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => { setMediaUrl(null); setMediaKind(null); }}
-                        className="absolute top-2.5 right-2.5 w-7 h-7 bg-black/70 hover:bg-red-600/90 rounded-full flex items-center justify-center transition-colors"
-                      >
-                        <X className="w-4 h-4 text-white" />
-                      </button>
                     </div>
                   ) : isReading ? (
                     <div className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-white/10 bg-white/5 py-12 text-white/50 text-xs">

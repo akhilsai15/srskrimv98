@@ -1646,6 +1646,7 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
 }) {
   const [text, setText] = useState('');
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [mediaLimitWarning, setMediaLimitWarning] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [mood, setMood] = useState<string>(getDefaultMood());
   const [music, setMusic] = useState<{ url: string; title: string; start_ms: number; duration_s?: number } | null>(null);
@@ -1665,6 +1666,7 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
   const reset = () => {
     setText('');
     setMedia([]);
+    setMediaLimitWarning(null);
     setIsReading(false);
     setMood(getDefaultMood());
     setMusic(null);
@@ -1784,28 +1786,67 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
     if (!usable.length) return;
 
     setIsReading(true);
+    setMediaLimitWarning(null);
+
     Promise.all(usable.map(f => new Promise<MediaItem>(resolve => {
       const r = new FileReader();
       r.onload = () => {
         const fileUrl = r.result as string;
         if (f.type.startsWith('video/')) {
-          generateVideoThumbnail(fileUrl)
-            .then(thumb => {
-              resolve({
-                id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                url: fileUrl,
-                kind: 'video',
-                thumbnail: thumb,
+          const videoElement = document.createElement('video');
+          videoElement.preload = 'metadata';
+          const objectUrl = URL.createObjectURL(f);
+          videoElement.src = objectUrl;
+          videoElement.onloadedmetadata = () => {
+            URL.revokeObjectURL(objectUrl);
+            const duration = videoElement.duration;
+            let warning: string | null = null;
+            if (duration > 120) {
+              warning = `✨ Video auto-trimmed! Length exceeds the 2-minute standard. It will auto-trim to the first 2 minutes (120s).`;
+            } else if (duration < 30) {
+              warning = `⚠️ Video is too short (${Math.floor(duration)}s). The minimum is 30s; it will auto-loop to meet the standard.`;
+            } else {
+              warning = `✨ Standard met! Video duration is ${Math.floor(duration)}s (within the 30s to 2 min range).`;
+            }
+            setMediaLimitWarning(warning);
+
+            generateVideoThumbnail(fileUrl)
+              .then(thumb => {
+                resolve({
+                  id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  url: fileUrl,
+                  kind: 'video',
+                  thumbnail: thumb,
+                });
+              })
+              .catch((err) => {
+                console.error("Failed to generate video thumbnail:", err);
+                resolve({
+                  id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  url: fileUrl,
+                  kind: 'video',
+                });
               });
-            })
-            .catch((err) => {
-              console.error("Failed to generate video thumbnail:", err);
-              resolve({
-                id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-                url: fileUrl,
-                kind: 'video',
+          };
+          videoElement.onerror = () => {
+            generateVideoThumbnail(fileUrl)
+              .then(thumb => {
+                resolve({
+                  id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  url: fileUrl,
+                  kind: 'video',
+                  thumbnail: thumb,
+                });
+              })
+              .catch((err) => {
+                console.error("Failed to generate video thumbnail:", err);
+                resolve({
+                  id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                  url: fileUrl,
+                  kind: 'video',
+                });
               });
-            });
+          };
         } else {
           resolve({
             id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
@@ -1827,7 +1868,15 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
     e.target.value = ''; // allow re-picking the same file later
   };
 
-  const removeMedia = (id: string) => setMedia(prev => prev.filter(m => m.id !== id));
+  const removeMedia = (id: string) => {
+    setMedia(prev => {
+      const remaining = prev.filter(m => m.id !== id);
+      if (!remaining.some(m => m.kind === 'video')) {
+        setMediaLimitWarning(null);
+      }
+      return remaining;
+    });
+  };
 
   const handlePost = () => {
     if (isPollMode) {
@@ -1998,29 +2047,37 @@ function PulseCreateSheet({ isOpen, onClose, currentUser, onPost, onSchedule, dr
 
               {/* Media preview — Instagram-style grid, but lives inline under the text like a tweet attachment */}
               {media.length > 0 && !isPollMode && !bgColor && (
-                <div className={`grid gap-2 ${media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  {media.map(item => (
-                    <div key={item.id} className={`relative rounded-xl overflow-hidden bg-black ${media.length === 1 && item.kind === 'video' ? 'aspect-video' : 'aspect-square'}`}>
-                      {item.kind === 'video' ? (
-                        <video src={item.url} className="w-full h-full object-cover" controls />
-                      ) : (
-                        <img src={item.url} alt="" className="w-full h-full object-cover" />
-                      )}
+                <div className="flex flex-col gap-2">
+                  <div className={`grid gap-2 ${media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {media.map(item => (
+                      <div key={item.id} className={`relative rounded-xl overflow-hidden bg-black ${media.length === 1 && item.kind === 'video' ? 'aspect-video' : 'aspect-square'}`}>
+                        {item.kind === 'video' ? (
+                          <video src={item.url} className="w-full h-full object-cover" controls />
+                        ) : (
+                          <img src={item.url} alt="" className="w-full h-full object-cover" />
+                        )}
+                        <button
+                          onClick={() => removeMedia(item.id)}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
+                        >
+                          <X className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    {!hasVideo && media.length < MAX_MEDIA && (
                       <button
-                        onClick={() => removeMedia(item.id)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="aspect-square rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-colors"
                       >
-                        <X className="w-3.5 h-3.5 text-white" />
+                        <Plus className="w-6 h-6 text-white/30" />
                       </button>
+                    )}
+                  </div>
+                  {mediaLimitWarning && (
+                    <div className="p-2.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/25 flex items-center gap-2 text-xs text-white/90">
+                      <span className="text-sm">⚡</span>
+                      <span className="font-medium">{mediaLimitWarning}</span>
                     </div>
-                  ))}
-                  {!hasVideo && media.length < MAX_MEDIA && (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square rounded-xl border-2 border-dashed border-white/20 flex items-center justify-center hover:border-[#B026FF]/50 hover:bg-[#B026FF]/5 transition-colors"
-                    >
-                      <Plus className="w-6 h-6 text-white/30" />
-                    </button>
                   )}
                 </div>
               )}
