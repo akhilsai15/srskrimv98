@@ -622,6 +622,73 @@ export function PulseSendSheet({
       alert("Failed to share post as a spark. Your browser storage might be full.");
     }
   };
+
+  const handleShareAsVibe = async () => {
+    if (!post) return;
+    try {
+      const vibeId = `vibereshare_${post.id}_${Date.now()}`;
+      
+      let activeUser = currentUser;
+      if (!activeUser) {
+        const storedUser = localStorage.getItem('skrimchat_user') || localStorage.getItem('skrimchat_mock_user');
+        if (storedUser) {
+          try { activeUser = JSON.parse(storedUser); } catch (e) {}
+        }
+      }
+      if (!activeUser) {
+        activeUser = {
+          id: 'current_user_fallback',
+          username: 'You',
+          fullName: 'You',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
+          handle: 'you'
+        };
+      }
+
+      const newVibe = {
+        id: vibeId,
+        type: post.type || 'text',
+        user: activeUser.username || 'You',
+        handle: activeUser.handle ? `@${activeUser.handle.replace('@', '')}` : '@you',
+        avatar: activeUser.avatar || '',
+        thumbnail: post.image || post.thumbnail || '',
+        videoSrc: post.video || post.videoSrc || undefined,
+        caption: post.caption || post.text || '',
+        audio: post.audio || post.music_title || 'Original Audio 🎤',
+        audioUrl: post.audioUrl || undefined,
+        duration: post.music_duration_s || post.duration || 15,
+        start_ms: post.music_start_ms || post.start_ms || undefined,
+        mood: post.mood || 'vibes',
+        createdAt: Date.now(),
+        likes: 0,
+        pulseCount: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        reactions: { pulse: 0, blaze: 0, vibe: 0, dead: 0 },
+        creatorCountry: 'India',
+        creatorTier: 'RISING',
+        vibeScore: 100,
+        watchTimeScore: 0,
+        rewatchRatio: 0,
+        colorTag: post.backgroundTheme || post.bgColor || undefined,
+        bgColor: post.backgroundTheme || post.bgColor || undefined,
+        isLiked: false,
+        isSaved: false,
+        isReshare: true,
+        resharedFrom: post.handle || post.user || 'user'
+      };
+
+      await saveRecord('vibes', newVibe);
+      window.dispatchEvent(new Event('skrimchat_user_vibes_updated'));
+      onShareComplete('vibe', '⚡ Shared to your Vibes Feed!');
+      onClose();
+    } catch (e) {
+      console.error("Failed to share as vibe in PulseSendSheet:", e);
+      alert("Failed to share post as a vibe.");
+    }
+  };
+
   const [activeView, setActiveView] = useState<'share' | 'connect'>('share');
   
   // Connect picker state
@@ -809,6 +876,22 @@ export function PulseSendSheet({
                       <div className="text-left">
                         <div className="text-white font-bold">{isSpark ? "Re-share to Spark" : "Share as Spark"}</div>
                         <div className="text-yellow-500/70 text-xs mt-0.5">Post to your 24h Spark story</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Re-share to Vibes */}
+                  {isVibe && (
+                    <button
+                      onClick={handleShareAsVibe}
+                      className="w-full flex items-center gap-4 p-3.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/30 hover:bg-[#B026FF]/20 transition-colors"
+                    >
+                      <div className="w-11 h-11 rounded-full bg-[#B026FF]/30 flex items-center justify-center shrink-0">
+                        <Share2 className="w-5 h-5 text-[#B026FF]" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-white font-bold">Re-share to Vibes Feed</div>
+                        <div className="text-[#B026FF]/70 text-xs mt-0.5">Repost this vibe to your profile & Vibes feed</div>
                       </div>
                     </button>
                   )}
