@@ -412,6 +412,8 @@ export interface VibePost {
   colorTag?: string; // Configurable color tags
   hashtags?: string[]; // Tag array parsed or set during vibe creation
   mood: string;
+  isReshare?: boolean;
+  resharedFrom?: string;
 }
 
 const VIBE_CAPTIONS = [

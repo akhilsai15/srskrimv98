@@ -4,7 +4,7 @@ import {
   Zap, MessageCircle, Share2, Bookmark, Volume2, VolumeX,
   Music, Heart, Play, Pause, ChevronUp, ChevronDown, Search, X,
   MoreHorizontal, Plus, Images, Video, RefreshCw, Send, ChevronLeft, ChevronRight,
-  Hash, Tag,
+  Hash, Tag, Repeat,
 } from 'lucide-react';
 import { saveRecord, getAllRecords, deleteRecord } from '../lib/services/mediaStorage';
 import { assembleVibesFeed, getDefaultMood, MOODS, MOCK_USERS, type VibePost } from '../lib/mock/skrimAlgorithm';
@@ -185,6 +185,103 @@ function VibeCard({
       return counts[vibe.id] ?? vibe?.shares ?? 0;
     } catch { return vibe?.shares ?? 0; }
   });
+
+  const [reshared, setReshared] = useState(() => {
+    try {
+      if (!vibe?.id) return false;
+      const rList: string[] = JSON.parse(localStorage.getItem('skrimchat_reshared_vibe_ids') || '[]');
+      return Array.isArray(rList) && rList.includes(vibe.id);
+    } catch { return false; }
+  });
+
+  const [resharesCount, setResharesCount] = useState(() => {
+    try {
+      if (!vibe?.id) return vibe?.shares ?? 0;
+      const counts: Record<string, number> = JSON.parse(localStorage.getItem('skrimchat_vibe_reshares') || '{}');
+      return counts[vibe.id] ?? (vibe?.isReshare ? 1 : 0);
+    } catch { return vibe?.isReshare ? 1 : 0; }
+  });
+
+  const handleReshare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!vibe || !vibe.id) return;
+
+    const isOwnVibe = vibe.user === currentUser?.username || vibe.handle === `@${currentUser?.username}` || vibe.handle === '@you';
+    if (isOwnVibe) {
+      alert("You cannot reshare your own vibe!");
+      return;
+    }
+
+    if (reshared) {
+      alert("You have already reshared this vibe!");
+      return;
+    }
+
+    try {
+      const vibeId = `vibereshare_${vibe.id}_${Date.now()}`;
+      
+      let activeUser = currentUser;
+      if (!activeUser) {
+        const storedUser = localStorage.getItem('skrimchat_user') || localStorage.getItem('skrimchat_mock_user');
+        if (storedUser) {
+          try { activeUser = JSON.parse(storedUser); } catch (err) {}
+        }
+      }
+      if (!activeUser) {
+        activeUser = {
+          id: 'current_user_fallback',
+          username: 'You',
+          fullName: 'You',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop',
+          handle: 'you'
+        };
+      }
+
+      const newVibe = {
+        ...vibe,
+        id: vibeId,
+        user: activeUser.fullName || activeUser.username || 'You',
+        handle: activeUser.username ? `@${activeUser.username.replace('@', '')}` : '@you',
+        avatar: activeUser.avatar || '',
+        createdAt: Date.now(),
+        likes: 0,
+        pulseCount: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        reactions: { pulse: 0, blaze: 0, vibe: 0, dead: 0 },
+        vibeScore: 100,
+        isLiked: false,
+        isSaved: false,
+        isReshare: true,
+        resharedFrom: vibe.handle || vibe.user || 'user'
+      };
+
+      await saveRecord('vibes', newVibe);
+      
+      try {
+        const rList: string[] = JSON.parse(localStorage.getItem('skrimchat_reshared_vibe_ids') || '[]');
+        if (!rList.includes(vibe.id)) {
+          rList.push(vibe.id);
+          localStorage.setItem('skrimchat_reshared_vibe_ids', JSON.stringify(rList));
+        }
+        
+        const counts: Record<string, number> = JSON.parse(localStorage.getItem('skrimchat_vibe_reshares') || '{}');
+        counts[vibe.id] = (counts[vibe.id] ?? 0) + 1;
+        localStorage.setItem('skrimchat_vibe_reshares', JSON.stringify(counts));
+        setResharesCount(counts[vibe.id]);
+      } catch (err) {
+        console.error("LocalStorage error on reshare:", err);
+      }
+
+      setReshared(true);
+      window.dispatchEvent(new Event('skrimchat_user_vibes_updated'));
+      alert("⚡ Vibe reshared successfully to your profile!");
+    } catch (err) {
+      console.error("Failed to reshare vibe:", err);
+      alert("Failed to reshare vibe.");
+    }
+  };
 
   const [newComment, setNewComment] = useState('');
   const [commentsList, setCommentsList] = useState<any[]>([]);
@@ -988,6 +1085,13 @@ function VibeCard({
             )}
           </div>
 
+          {vibe.isReshare && (
+            <div className="flex items-center gap-1.5 text-[10px] text-[#00F0FF] font-mono font-bold bg-[#00F0FF]/15 border border-[#00F0FF]/30 px-3 py-1 rounded-xl w-fit select-none">
+              <Repeat className="w-3.5 h-3.5 text-[#00F0FF]" />
+              <span>RESHARE_VIBE_FROM: {vibe.resharedFrom?.toUpperCase() || 'USER'}</span>
+            </div>
+          )}
+
           {/* Vibe Meter / Telemetry Gauge */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[10px] font-mono text-white/50 tracking-wider">
@@ -1043,7 +1147,7 @@ function VibeCard({
           </div>
 
           {/* Social Action Grid */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-1.5">
             
             {/* Pulse Action */}
             <button 
@@ -1067,7 +1171,7 @@ function VibeCard({
                 incrementStat('reactionsSent', 1);
                 incrementStat('pulseScore', 3);
               }}
-              className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all active:scale-95 ${
+              className={`p-2 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all active:scale-95 ${
                 liked 
                   ? 'bg-[#B026FF]/15 border-[#B026FF] text-[#B026FF] shadow-lg shadow-[#B026FF]/10' 
                   : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:text-white'
@@ -1078,6 +1182,7 @@ function VibeCard({
               <span className="text-[10px] font-bold font-mono">{fmt(pulses)}</span>
             </button>
 
+
             {/* Save Action */}
             <button 
               onClick={() => {
@@ -1087,7 +1192,7 @@ function VibeCard({
                   savePost(vibe.id, vibe);
                 }
               }}
-              className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all active:scale-95 ${
+              className={`p-2 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all active:scale-95 ${
                 saved 
                   ? 'bg-[#00F0FF]/15 border-[#00F0FF] text-[#00F0FF] shadow-lg shadow-[#00F0FF]/10' 
                   : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:text-white'
@@ -1098,10 +1203,25 @@ function VibeCard({
               <span className="text-[10px] font-bold font-mono">{fmt(vibe.saves)}</span>
             </button>
 
+            {/* Reshare Action */}
+            <button 
+              onClick={handleReshare}
+              className={`p-2 rounded-2xl flex flex-col items-center justify-center gap-1 border transition-all active:scale-95 ${
+                reshared 
+                  ? 'bg-[#B026FF]/15 border-[#B026FF] text-[#B026FF] shadow-lg shadow-[#B026FF]/10 cursor-not-allowed' 
+                  : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+              }`}
+              title={reshared ? "Already Reshared" : "Reshare to Profile"}
+              disabled={reshared}
+            >
+              <Repeat className={`w-4 h-4 ${reshared ? 'text-[#B026FF]' : ''}`} />
+              <span className="text-[10px] font-bold font-mono">{fmt(resharesCount)}</span>
+            </button>
+
             {/* Share Action */}
             <button 
               onClick={handleShare}
-              className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-white/60 hover:bg-white/10 hover:text-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
+              className="p-2 rounded-2xl bg-white/5 border border-white/5 text-white/60 hover:bg-white/10 hover:text-white flex flex-col items-center justify-center gap-1 transition-all active:scale-95"
               title="Share Link"
             >
               <Share2 className="w-4 h-4" />
@@ -1109,7 +1229,7 @@ function VibeCard({
             </button>
 
             {/* Audio Widget */}
-            <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 text-white/60 flex flex-col items-center justify-center gap-1 overflow-hidden">
+            <div className="p-2 rounded-2xl bg-white/5 border border-white/5 text-white/60 flex flex-col items-center justify-center gap-1 overflow-hidden">
               <Music className="w-4 h-4 text-[#B026FF] animate-pulse" />
               <span className="text-[8px] font-bold text-center truncate w-full tracking-tighter" title={vibe.audio}>
                 {vibe.audio?.split('·')[0] || 'Audio'}
@@ -2060,15 +2180,35 @@ export default function VibesScreen() {
     }, 700);
   }, [activeFilter, isRefreshing]);
 
+  const lastFilterRef = useRef(activeFilter);
+  const lastMoodRef = useRef(mood);
+  const lastOffsetsRef = useRef(JSON.stringify(refreshOffsets));
+
   // Initial load
   useEffect(() => {
-    setLoading(true);
-    setCurrentIdx(0);
-    setTimeout(() => {
+    const filterChanged = lastFilterRef.current !== activeFilter;
+    const moodChanged = lastMoodRef.current !== mood;
+    const offsetsChanged = lastOffsetsRef.current !== JSON.stringify(refreshOffsets);
+
+    lastFilterRef.current = activeFilter;
+    lastMoodRef.current = mood;
+    lastOffsetsRef.current = JSON.stringify(refreshOffsets);
+
+    // Only set loading and reset scroll if filter, mood, or offsets actually changed, or if vibes is empty
+    const shouldReset = filterChanged || moodChanged || offsetsChanged || vibes.length === 0;
+
+    if (shouldReset) {
+      setLoading(true);
+      setCurrentIdx(0);
+    }
+
+    const timer = setTimeout(() => {
       if (activeFilter === 'myvibes') {
         const sortedMyVibes = [...userVibes].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         setVibes(sortedMyVibes);
-        setLoading(false);
+        if (shouldReset) {
+          setLoading(false);
+        }
         return;
       }
 
@@ -2078,15 +2218,20 @@ export default function VibesScreen() {
 
       // For "trending" sort by score desc already; "new" = reverse freshness; "following"/"nearby" = seeded different set
       let initial = assembleVibesFeed(mood, offset, 12);
+
+      // Filter out reshared vibes from userVibes and sessionUserVibes unless we are in 'myvibes'
+      const nonReshareUserVibes = userVibes.filter(v => !v.isReshare);
+      const nonReshareSessionUserVibes = sessionUserVibes.filter(v => !v.isReshare);
+
       if (activeFilter === 'trending') {
         initial = [...initial].sort((a, b) => b.vibeScore - a.vibeScore);
       } else if (activeFilter === 'new') {
-        initial = [...userVibes, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        initial = [...nonReshareUserVibes, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       } else if (activeFilter === 'foryou') {
-        const customVibesNotSession = userVibes.filter(uv => !sessionUserVibes.some(sv => sv.id === uv.id));
-        initial = [...sessionUserVibes, ...customVibesNotSession, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        const customVibesNotSession = nonReshareUserVibes.filter(uv => !nonReshareSessionUserVibes.some(sv => sv.id === uv.id));
+        initial = [...nonReshareSessionUserVibes, ...customVibesNotSession, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       } else {
-        initial = [...userVibes, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        initial = [...nonReshareUserVibes, ...initial].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       }
 
       let deletedVibeIds: string[] = [];
@@ -2105,8 +2250,12 @@ export default function VibesScreen() {
       });
 
       setVibes(uniqueInitial);
-      setLoading(false);
-    }, 600);
+      if (shouldReset) {
+        setLoading(false);
+      }
+    }, shouldReset ? 600 : 0);
+
+    return () => clearTimeout(timer);
   }, [mood, activeFilter, userVibes, refreshOffsets, sessionUserVibes]);
 
   // Load more when near end

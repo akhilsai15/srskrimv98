@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, MessageCircle, Share, Music, Send, Link as LinkIcon, Zap, Shield, SmilePlus, Bookmark, Trash2, Pencil, Volume2, VolumeX } from 'lucide-react';
+import { X, Heart, MessageCircle, Share, Music, Send, Link as LinkIcon, Zap, Shield, SmilePlus, Bookmark, Trash2, Pencil, Volume2, VolumeX, Repeat } from 'lucide-react';
 import { CURATED_TRACKS } from './MusicPicker';
 import { SKRIM_REACTIONS } from '../lib/mock/mockData';
 import { useSavedStore } from '../store/savedStore';
@@ -521,6 +521,12 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, users, onC
               <BadgeRow stats={generateMockStatsForBadge(author?.username || '')} isSmall={true} />
             </div>
             <p className="text-xs text-white/70 drop-shadow-md">Just now</p>
+            {currentPost?.isReshare && (
+              <div className="flex items-center gap-1 text-[9px] text-[#00F0FF] font-mono font-bold mt-1 bg-[#00F0FF]/15 border border-[#00F0FF]/30 px-2 py-0.5 rounded-md w-fit">
+                <Repeat className="w-2.5 h-2.5 text-[#00F0FF]" />
+                <span>RESHARED FROM: {currentPost.resharedFrom?.toUpperCase() || 'USER'}</span>
+              </div>
+            )}
           </div>
         </div>
 

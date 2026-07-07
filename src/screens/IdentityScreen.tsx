@@ -1387,7 +1387,14 @@ export default function IdentityScreen() {
                        <PlaySquare className="w-4 h-4 text-white drop-shadow-md" />
                     </div>
                     
-                    {isVideo && (
+                    {vibe.isReshare && (
+                      <div className="absolute top-2 left-2 bg-[#00F0FF]/85 backdrop-blur-md px-1.5 py-0.5 rounded-md z-10 flex items-center gap-1 border border-[#00F0FF]/30 shadow-md">
+                        <Repeat className="w-3 h-3 text-black" />
+                        <span className="text-[8px] font-black text-black">RESHARE</span>
+                      </div>
+                    )}
+                    
+                    {isVideo && !vibe.isReshare && (
                       <div className="absolute top-2 left-2 bg-black/60 p-1 rounded text-[8px] text-[#00F0FF] font-bold tracking-wider">
                         VIDEO
                       </div>

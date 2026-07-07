@@ -880,22 +880,6 @@ export function PulseSendSheet({
                     </button>
                   )}
 
-                  {/* Re-share to Vibes */}
-                  {isVibe && (
-                    <button
-                      onClick={handleShareAsVibe}
-                      className="w-full flex items-center gap-4 p-3.5 rounded-xl bg-[#B026FF]/10 border border-[#B026FF]/30 hover:bg-[#B026FF]/20 transition-colors"
-                    >
-                      <div className="w-11 h-11 rounded-full bg-[#B026FF]/30 flex items-center justify-center shrink-0">
-                        <Share2 className="w-5 h-5 text-[#B026FF]" />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-white font-bold">Re-share to Vibes Feed</div>
-                        <div className="text-[#B026FF]/70 text-xs mt-0.5">Repost this vibe to your profile & Vibes feed</div>
-                      </div>
-                    </button>
-                  )}
-
                   {/* Send in Connect — to a specific user */}
                   <button
                     onClick={() => handleShareOption("Connect")}
