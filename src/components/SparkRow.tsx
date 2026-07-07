@@ -106,11 +106,12 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
 
       {/* Sparks */}
       {sortedOtherSparks.map((spark, index) => {
+         const latestSpark = spark.sparks?.[0] || {};
          const hasViewed = spark.hasViewed;
-         const isNova = spark.energy === 'NOVA';
+         const isNova = latestSpark.energy === 'NOVA';
          
          const now = Date.now();
-         const timeLeft = spark.expiresAt - now;
+         const timeLeft = (latestSpark.expiresAt || 0) - now;
          
          let isExpiringSoon = false;
          let isExpiringVerySoon = false;
@@ -129,9 +130,10 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
            }
          }
          
-         let ringClass = hasViewed ? 'bg-white/20' : 'bg-gradient-to-tr ' + getEnergyColor(spark.energy);
+         const sparkEnergy = latestSpark.energy || 'COLD';
+         let ringClass = hasViewed ? 'bg-white/20' : 'bg-gradient-to-tr ' + getEnergyColor(sparkEnergy);
          let ringStyle: any = {
-           animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(spark.energy)} linear infinite`,
+           animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(sparkEnergy)} linear infinite`,
            boxShadow: isNova && !hasViewed ? '0 0 15px rgba(255, 107, 0, 0.6)' : 'none'
          };
 
@@ -152,20 +154,20 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
              className={`flex flex-col items-center gap-1 min-w-[72px] shrink-0 cursor-pointer group relative ${activeUserId === spark.userId ? 'scale-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]' : ''} transition-all duration-300`}
            >
              <div className="relative">
-               {spark.isCollab ? (
-                  <div className={`relative w-[60px] h-[36px] flex items-center justify-start mt-2 mb-2 ${spark.status === 'pending' ? 'opacity-60' : ''}`}>
-                    <div className={`w-[36px] h-[36px] rounded-full p-[2px] ${spark.status === 'pending' ? 'border-2 border-dashed border-white/40 bg-transparent' : ringClass} absolute left-0 z-10`} style={spark.status === 'pending' ? {} : ringStyle}>
-                      <div className="w-full h-full rounded-full bg-[#121212] overflow-hidden border border-[#121212]" style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(spark.energy)} linear infinite reverse` }}>
-                        <img src={spark.creator?.avatar || spark.user?.avatar} alt="Creator" className="w-full h-full object-cover" />
+               {latestSpark.isCollab ? (
+                  <div className={`relative w-[60px] h-[36px] flex items-center justify-start mt-2 mb-2 ${latestSpark.status === 'pending' ? 'opacity-60' : ''}`}>
+                    <div className={`w-[36px] h-[36px] rounded-full p-[2px] ${latestSpark.status === 'pending' ? 'border-2 border-dashed border-white/40 bg-transparent' : ringClass} absolute left-0 z-10`} style={latestSpark.status === 'pending' ? {} : ringStyle}>
+                      <div className="w-full h-full rounded-full bg-[#121212] overflow-hidden border border-[#121212]" style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(sparkEnergy)} linear infinite reverse` }}>
+                        <img src={latestSpark.creator?.avatar || spark.user?.avatar} alt="Creator" className="w-full h-full object-cover" />
                       </div>
                     </div>
-                    <div className={`w-[36px] h-[36px] rounded-full p-[2px] ${spark.status === 'pending' ? 'border-2 border-dashed border-white/40 bg-transparent' : ringClass} absolute left-[24px] z-20`} style={spark.status === 'pending' ? {} : ringStyle}>
-                      <div className="w-full h-full rounded-full bg-[#121212] overflow-hidden border border-[#121212]" style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(spark.energy)} linear infinite reverse` }}>
-                        <img src={spark.collabPartner?.avatar} alt="Partner" className="w-full h-full object-cover" />
+                    <div className={`w-[36px] h-[36px] rounded-full p-[2px] ${latestSpark.status === 'pending' ? 'border-2 border-dashed border-white/40 bg-transparent' : ringClass} absolute left-[24px] z-20`} style={latestSpark.status === 'pending' ? {} : ringStyle}>
+                      <div className="w-full h-full rounded-full bg-[#121212] overflow-hidden border border-[#121212]" style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(sparkEnergy)} linear infinite reverse` }}>
+                        <img src={latestSpark.collabPartner?.avatar} alt="Partner" className="w-full h-full object-cover" />
                       </div>
                     </div>
-                    <div className={`absolute -bottom-2 -right-1 bg-[#121212] rounded-full px-1.5 py-0.5 border border-white/20 z-30 ${spark.status === 'pending' ? 'text-[10px] text-white/70' : 'text-[10px]'}`}>
-                      {spark.status === 'pending' ? '⏳' : '👥'}
+                    <div className={`absolute -bottom-2 -right-1 bg-[#121212] rounded-full px-1.5 py-0.5 border border-white/20 z-30 ${latestSpark.status === 'pending' ? 'text-[10px] text-white/70' : 'text-[10px]'}`}>
+                      {latestSpark.status === 'pending' ? '⏳' : '👥'}
                     </div>
                   </div>
                ) : (
@@ -175,7 +177,7 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
                  >
                    <div 
                      className={`w-full h-full rounded-full bg-[#121212] overflow-hidden border-2 border-[#121212] ${hasViewed ? 'opacity-50' : 'opacity-100'}`}
-                     style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(spark.energy)} linear infinite reverse` }} // Reverse spin to keep image upright
+                     style={{ animation: hasViewed ? 'none' : `spin ${getEnergyAnimationDuration(sparkEnergy)} linear infinite reverse` }} // Reverse spin to keep image upright
                    >
                      <img src={spark.user?.avatar} alt={spark.user?.displayName} className="w-full h-full object-cover" />
                    </div>
@@ -188,23 +190,23 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
                    <span className="text-[10px] leading-none">🚀</span>
                  </div>
                )}
-               {spark.type === 'image' && (
+               {latestSpark.type === 'image' && (
                  <div className="absolute -bottom-1 -right-1 bg-white/10 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 z-10 shadow-sm flex items-center justify-center">
                    <span className="text-[10px] leading-none">🖼️</span>
                  </div>
                )}
-               {spark.type === 'video' && (
+               {latestSpark.type === 'video' && (
                  <div className="absolute -bottom-1 -right-1 bg-white/10 backdrop-blur-md rounded-full px-1.5 py-0.5 border border-white/20 z-10 shadow-sm flex items-center gap-1">
                    <span className="text-[10px] leading-none">🎥</span>
-                   {spark.duration && <span className="text-[9px] font-bold text-white">0:{spark.duration.toString().padStart(2, '0')}</span>}
+                   {latestSpark.duration && <span className="text-[9px] font-bold text-white">0:{latestSpark.duration.toString().padStart(2, '0')}</span>}
                  </div>
                )}
-               {spark.isChallenge && !hasViewed && !isExpiringSoon && (
+               {latestSpark.isChallenge && !hasViewed && !isExpiringSoon && (
                  <div className="absolute -top-1 right-3 bg-[#121212] rounded-full p-0.5 border border-white/20 z-10">
                    <span className="text-[10px] leading-none">🎯</span>
                  </div>
                )}
-               {spark.isCollab && !hasViewed && !isExpiringSoon && (
+               {latestSpark.isCollab && !hasViewed && !isExpiringSoon && (
                  <div className="absolute bottom-0 right-0 bg-[#121212] rounded-full p-0.5 border border-white/20 z-10">
                    <span className="text-[10px] leading-none">👥</span>
                  </div>
@@ -212,7 +214,7 @@ export function SparkRow({ sparks, onSparkClick, onAddSpark, currentUser, active
              </div>
              <div className="flex flex-col items-center mt-1">
                <span className={`text-[10px] font-medium truncate w-[68px] text-center ${hasViewed ? 'text-gray-500' : 'text-white'}`}>
-                 {spark.isCollab ? `${(spark.creator?.username || spark.user?.username)?.replace('@', '')} + ${(spark.collabPartner?.username)?.replace('@', '')}` : spark.user?.username}
+                 {latestSpark.isCollab ? `${(latestSpark.creator?.username || spark.user?.username)?.replace('@', '')} + ${(latestSpark.collabPartner?.username)?.replace('@', '')}` : spark.user?.username}
                </span>
                {countdownText && !hasViewed && (
                  <span className={`text-[10px] font-bold ${isExpiringVerySoon ? (isExpiringImminent ? 'text-red-500 ' : 'text-red-400') : 'text-orange-400'}`}

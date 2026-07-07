@@ -3266,7 +3266,10 @@ export default function PulseScreen() {
         ) : (
           <SparkRow
             sparks={groupedSparks}
-            onSparkClick={g => setActiveUserIndex(groupedSparks.findIndex(x => x.userId === g.userId))}
+            onSparkClick={g => {
+              const idx = groupedSparks.findIndex(x => x.userId === g.userId);
+              if (idx >= 0) setActiveUserIndex(idx);
+            }}
             onAddSpark={() => setIsSparkCreatorOpen(true)}
             currentUser={currentUser}
             activeUserId={activeUserIndex !== null ? groupedSparks[activeUserIndex]?.userId : undefined}
